@@ -50,10 +50,13 @@ defmodule Kanta.Backend do
         Kanta.Utils.GettextRecompiler.needs_recompile?(@flag_file)
       end
 
-      def __gettext__(:known_locales) do
-        backend = fallback_backend()
-        Gettext.known_locales(backend)
-      end
+      # `use Gettext.Backend` (above) defines `__gettext__/1` from a `@before_compile`
+      # hook, so we register our own hook *after* it to override `:known_locales` — we
+      # want the locales known to the PO-file fallback backend, not this backend's
+      # (kanta-specific) priv dir. Doing this here in the module body instead would emit
+      # an OTP 28+ "redundant clause" warning, because the generated clause would not
+      # yet exist to be made overridable.
+      @before_compile {Kanta.Backend, :__before_compile_known_locales__}
 
       def handle_missing_translation(locale, domain, msgctxt, msgid, bindings) do
         case Kanta.Backend.Adapter.CachedDB.lgettext(
@@ -111,6 +114,22 @@ defmodule Kanta.Backend do
       defp fallback_backend() do
         Module.concat(__MODULE__, GettextFallbackBackend)
       end
+    end
+  end
+
+  @doc false
+  defmacro __before_compile_known_locales__(_env) do
+    quote do
+      defoverridable __gettext__: 1
+
+      # Resolve known locales from the PO-file fallback backend rather than this
+      # backend's (kanta-specific) priv dir; delegate every other key to the
+      # `use Gettext.Backend`-generated implementation via `super/1`.
+      def __gettext__(:known_locales) do
+        Gettext.known_locales(fallback_backend())
+      end
+
+      def __gettext__(key), do: super(key)
     end
   end
 end
