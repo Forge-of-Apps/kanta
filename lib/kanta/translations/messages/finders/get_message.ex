@@ -14,14 +14,23 @@ defmodule Kanta.Translations.Messages.Finders.GetMessage do
   def find(params \\ []) do
     cache_key = Cache.generate_cache_key("message", params)
 
-    with {:error, _, :not_cached} <- find_in_cache(cache_key),
-         {:ok, %Message{} = message} <- find_in_database(params) do
-      Cache.put(cache_key, message)
+    case find_in_cache(cache_key) do
+      {:ok, :not_found} ->
+        {:error, :message, :not_found}
 
-      {:ok, message}
-    else
-      {:ok, %Message{} = message} -> {:ok, message}
-      {:error, _, :not_found} -> {:error, :message, :not_found}
+      {:ok, %Message{} = message} ->
+        {:ok, message}
+
+      {:error, _, :not_cached} ->
+        case find_in_database(params) do
+          {:ok, %Message{} = message} ->
+            Cache.put(cache_key, message)
+            {:ok, message}
+
+          {:error, _, :not_found} ->
+            Cache.put(cache_key, :not_found)
+            {:error, :message, :not_found}
+        end
     end
   end
 

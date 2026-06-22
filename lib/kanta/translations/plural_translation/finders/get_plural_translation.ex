@@ -13,14 +13,23 @@ defmodule Kanta.Translations.PluralTranslations.Finders.GetPluralTranslation do
   def find(params \\ []) do
     cache_key = Cache.generate_cache_key("plural_translation", params)
 
-    with {:error, _, :not_cached} <- find_in_cache(cache_key),
-         {:ok, %PluralTranslation{} = plural_translation} <- find_in_database(params) do
-      Cache.put(cache_key, plural_translation)
+    case find_in_cache(cache_key) do
+      {:ok, :not_found} ->
+        {:error, :plural_translation, :not_found}
 
-      {:ok, plural_translation}
-    else
-      {:ok, %PluralTranslation{} = plural_translation} -> {:ok, plural_translation}
-      {:error, _, :not_found} -> {:error, :plural_translation, :not_found}
+      {:ok, %PluralTranslation{} = plural_translation} ->
+        {:ok, plural_translation}
+
+      {:error, _, :not_cached} ->
+        case find_in_database(params) do
+          {:ok, %PluralTranslation{} = plural_translation} ->
+            Cache.put(cache_key, plural_translation)
+            {:ok, plural_translation}
+
+          {:error, _, :not_found} ->
+            Cache.put(cache_key, :not_found)
+            {:error, :plural_translation, :not_found}
+        end
     end
   end
 
