@@ -14,19 +14,15 @@ defmodule Kanta.Translations.SingularTranslations.Finders.GetSingularTranslation
     cache_key = Cache.generate_cache_key("singular_translation", params)
 
     with {:error, _, :not_cached} <- find_in_cache(cache_key),
-         {:ok, %SingularTranslation{} = singular_translation} <- find_in_database(params) do
-      Cache.put(cache_key, singular_translation)
-      {:ok, singular_translation}
+         {:ok, singular_translation} <- find_in_database(params) do
+      singular_translation |> tap(&Cache.put(cache_key, &1))
     else
-      {:ok, :not_found} ->
-        {:error, :singular_translation, :not_found}
-
-      {:ok, %SingularTranslation{} = singular_translation} ->
-        {:ok, singular_translation}
-
-      {:error, _, :not_found} ->
-        Cache.put(cache_key, :not_found)
-        {:error, :singular_translation, :not_found}
+      {:ok, cached} -> cached
+      {:error, _, :not_found} -> :not_found |> tap(&Cache.put(cache_key, &1))
+    end
+    |> case do
+      %SingularTranslation{} = singular_translation -> {:ok, singular_translation}
+      :not_found -> {:error, :singular_translation, :not_found}
     end
   end
 
