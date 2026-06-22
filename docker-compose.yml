@@ -1,0 +1,17 @@
+# Local Postgres for running the test suite.
+#   docker compose up -d
+#   MIX_ENV=test mix ecto.create && mix ecto.migrate && mix test
+# Matches config/config.exs defaults (POSTGRES_* env vars override).
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5

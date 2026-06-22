@@ -27,7 +27,24 @@ defmodule Kanta.Translations.Messages do
   end
 
   def create_message(attrs, opts \\ []) do
-    %Message{} |> Message.changeset(attrs) |> Repo.get_repo().insert(opts)
+    %Message{}
+    |> Message.changeset(attrs)
+    |> Repo.get_repo().insert(opts)
+    |> case do
+      {:ok, message} ->
+        # A new message invalidates any cached `:not_found` for that lookup.
+        # The finders key negative results by query params, and the same
+        # message is looked up under several param shapes (see ExtractMessage
+        # and CachedDB), so we cannot target a single key reliably — drop the
+        # whole cache, as merge_messages does. Messages are only created during
+        # the boot-time PO sync and dashboard actions, never on the hot path,
+        # so this is not a per-request cost.
+        Kanta.Cache.delete_all()
+        {:ok, message}
+
+      error ->
+        error
+    end
   end
 
   def update_message(message, attrs) do
