@@ -20,7 +20,7 @@ defmodule Kanta.Translations.Finders.NegativeCachingTest do
   alias Kanta.Translations.SingularTranslations.Finders.GetSingularTranslation
 
   setup do
-    Cache.delete_all()
+    Cache.delete_all!()
 
     {:ok, locale} =
       Translations.create_locale(%{
@@ -65,7 +65,7 @@ defmodule Kanta.Translations.Finders.NegativeCachingTest do
       })
 
     # create_message / create_*_translation warm the cache; start each test cold.
-    Cache.delete_all()
+    Cache.delete_all!()
 
     {:ok,
      %{
@@ -80,10 +80,10 @@ defmodule Kanta.Translations.Finders.NegativeCachingTest do
       params = [filter: [id: message.id]]
       key = Cache.generate_cache_key("message", params)
 
-      assert is_nil(Cache.get(key))
+      assert is_nil(Cache.get!(key))
       assert {:ok, %Message{id: id}} = GetMessage.find(params)
       assert id == message.id
-      assert %Message{id: ^id} = Cache.get(key)
+      assert %Message{id: ^id} = Cache.get!(key)
     end
 
     test "database miss returns :not_found and negative-caches the sentinel" do
@@ -91,7 +91,7 @@ defmodule Kanta.Translations.Finders.NegativeCachingTest do
       key = Cache.generate_cache_key("message", params)
 
       assert {:error, :message, :not_found} = GetMessage.find(params)
-      assert Cache.get(key) == :not_found
+      assert Cache.get!(key) == :not_found
     end
 
     # The two cache-hit tests below exercise the `{:ok, cached} -> cached` else
@@ -102,7 +102,7 @@ defmodule Kanta.Translations.Finders.NegativeCachingTest do
       params = [filter: [id: -1]]
       key = Cache.generate_cache_key("message", params)
       cached = %Message{id: 123, msgid: "cached"}
-      Cache.put(key, cached)
+      Cache.put!(key, cached)
 
       assert {:ok, ^cached} = GetMessage.find(params)
     end
@@ -110,7 +110,7 @@ defmodule Kanta.Translations.Finders.NegativeCachingTest do
     test "cached :not_found short-circuits an existing row", %{message: message} do
       params = [filter: [id: message.id]]
       key = Cache.generate_cache_key("message", params)
-      Cache.put(key, :not_found)
+      Cache.put!(key, :not_found)
 
       assert {:error, :message, :not_found} = GetMessage.find(params)
     end
@@ -121,10 +121,10 @@ defmodule Kanta.Translations.Finders.NegativeCachingTest do
       params = [filter: [id: translation.id]]
       key = Cache.generate_cache_key("singular_translation", params)
 
-      assert is_nil(Cache.get(key))
+      assert is_nil(Cache.get!(key))
       assert {:ok, %SingularTranslation{id: id}} = GetSingularTranslation.find(params)
       assert id == translation.id
-      assert %SingularTranslation{id: ^id} = Cache.get(key)
+      assert %SingularTranslation{id: ^id} = Cache.get!(key)
     end
 
     test "database miss returns :not_found and negative-caches the sentinel" do
@@ -132,7 +132,7 @@ defmodule Kanta.Translations.Finders.NegativeCachingTest do
       key = Cache.generate_cache_key("singular_translation", params)
 
       assert {:error, :singular_translation, :not_found} = GetSingularTranslation.find(params)
-      assert Cache.get(key) == :not_found
+      assert Cache.get!(key) == :not_found
     end
   end
 
@@ -141,10 +141,10 @@ defmodule Kanta.Translations.Finders.NegativeCachingTest do
       params = [filter: [id: translation.id]]
       key = Cache.generate_cache_key("plural_translation", params)
 
-      assert is_nil(Cache.get(key))
+      assert is_nil(Cache.get!(key))
       assert {:ok, %PluralTranslation{id: id}} = GetPluralTranslation.find(params)
       assert id == translation.id
-      assert %PluralTranslation{id: ^id} = Cache.get(key)
+      assert %PluralTranslation{id: ^id} = Cache.get!(key)
     end
 
     test "database miss returns :not_found and negative-caches the sentinel" do
@@ -152,11 +152,11 @@ defmodule Kanta.Translations.Finders.NegativeCachingTest do
       key = Cache.generate_cache_key("plural_translation", params)
 
       assert {:error, :plural_translation, :not_found} = GetPluralTranslation.find(params)
-      assert Cache.get(key) == :not_found
+      assert Cache.get!(key) == :not_found
     end
   end
 
   setup_all do
-    on_exit(fn -> Cache.delete_all() end)
+    on_exit(fn -> Cache.delete_all!() end)
   end
 end

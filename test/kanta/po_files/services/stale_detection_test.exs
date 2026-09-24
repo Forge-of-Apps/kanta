@@ -8,7 +8,7 @@ defmodule Kanta.PoFiles.Services.StaleDetectionTest do
 
   setup do
     # Clear cache before each test
-    Kanta.Cache.delete_all()
+    Kanta.Cache.delete_all!()
 
     # Create locales
     {:ok, locale_en} =

@@ -10,7 +10,7 @@ defmodule KantaWeb.Components.Shared.SearchInput do
   attr :label, :string, required: true
   attr :name, :any
   attr :value, :any
-  attr :rest, :global
+  attr :rest, :global, include: ~w(type)
 
   def render(assigns) do
     ~H"""

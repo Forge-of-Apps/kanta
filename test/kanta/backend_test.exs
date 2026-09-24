@@ -12,7 +12,7 @@ defmodule Kanta.BackendTest do
 
   setup do
     # Clear the cache before each test
-    Kanta.Cache.delete_all()
+    Kanta.Cache.delete_all!()
 
     # Create test data in database
     {:ok, locale} =
@@ -237,7 +237,7 @@ defmodule Kanta.BackendTest do
       })
 
     # Clear cache
-    Kanta.Cache.delete_all()
+    Kanta.Cache.delete_all!()
 
     Gettext.put_locale("it")
 

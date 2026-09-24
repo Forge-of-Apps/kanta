@@ -7,7 +7,7 @@ defmodule Kanta.Backend.Adapter.CachedDBTest do
 
   setup do
     # Clear the cache before each test
-    Kanta.Cache.delete_all()
+    Kanta.Cache.delete_all!()
 
     # Create test data in database
     {:ok, locale} =
@@ -102,7 +102,7 @@ defmodule Kanta.Backend.Adapter.CachedDBTest do
         })
 
       # Clear cache to ensure fresh state
-      Kanta.Cache.delete_all()
+      Kanta.Cache.delete_all!()
 
       result = CachedDB.lgettext("fr", "test_domain", nil, "Hello %{name}", %{name: "Alice"})
       assert result == {:ok, "Bonjour Alice"}
@@ -134,7 +134,7 @@ defmodule Kanta.Backend.Adapter.CachedDBTest do
         })
 
       # Clear cache to ensure fresh state
-      Kanta.Cache.delete_all()
+      Kanta.Cache.delete_all!()
 
       result =
         CachedDB.lngettext(
@@ -209,7 +209,7 @@ defmodule Kanta.Backend.Adapter.CachedDBTest do
         })
 
       # Clear cache to ensure fresh state
-      Kanta.Cache.delete_all()
+      Kanta.Cache.delete_all!()
 
       result =
         CachedDB.lngettext(
@@ -229,7 +229,7 @@ defmodule Kanta.Backend.Adapter.CachedDBTest do
   # Run after each test
   setup_all do
     on_exit(fn ->
-      Kanta.Cache.delete_all()
+      Kanta.Cache.delete_all!()
     end)
   end
 end

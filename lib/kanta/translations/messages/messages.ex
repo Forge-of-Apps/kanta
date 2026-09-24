@@ -39,7 +39,7 @@ defmodule Kanta.Translations.Messages do
         # whole cache, as merge_messages does. Messages are only created during
         # the boot-time PO sync and dashboard actions, never on the hot path,
         # so this is not a per-request cost.
-        Kanta.Cache.delete_all()
+        Kanta.Cache.delete_all!()
         {:ok, message}
 
       error ->
@@ -187,7 +187,7 @@ defmodule Kanta.Translations.Messages do
         Repo.get_repo().delete(from_message)
 
         # Invalidate cache
-        Kanta.Cache.delete_all()
+        Kanta.Cache.delete_all!()
 
         # Return the target message
         to_message

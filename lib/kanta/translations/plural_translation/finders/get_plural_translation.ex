@@ -15,10 +15,10 @@ defmodule Kanta.Translations.PluralTranslations.Finders.GetPluralTranslation do
 
     with {:error, _, :not_cached} <- find_in_cache(cache_key),
          {:ok, plural_translation} <- find_in_database(params) do
-      plural_translation |> tap(&Cache.put(cache_key, &1))
+      plural_translation |> tap(&Cache.put!(cache_key, &1))
     else
       {:ok, cached} -> cached
-      {:error, _, :not_found} -> :not_found |> tap(&Cache.put(cache_key, &1))
+      {:error, _, :not_found} -> :not_found |> tap(&Cache.put!(cache_key, &1))
     end
     |> case do
       %PluralTranslation{} = plural_translation -> {:ok, plural_translation}
@@ -27,7 +27,7 @@ defmodule Kanta.Translations.PluralTranslations.Finders.GetPluralTranslation do
   end
 
   defp find_in_cache(cache_key) do
-    case Cache.get(cache_key) do
+    case Cache.get!(cache_key) do
       nil ->
         {:error, :plural_translation, :not_cached}
 
