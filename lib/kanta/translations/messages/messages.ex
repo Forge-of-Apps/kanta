@@ -51,6 +51,14 @@ defmodule Kanta.Translations.Messages do
     message
     |> Message.changeset(attrs)
     |> Repo.get_repo().update()
+    |> case do
+      {:ok, message} ->
+        Kanta.Cache.delete_all!()
+        {:ok, message}
+
+      error ->
+        error
+    end
   end
 
   @doc """
@@ -105,6 +113,14 @@ defmodule Kanta.Translations.Messages do
         message_deleted: message_count == 1
       }
     end)
+    |> case do
+      {:ok, stats} ->
+        Kanta.Cache.delete_all!()
+        {:ok, stats}
+
+      error ->
+        error
+    end
   end
 
   def delete_messages(message_ids) when is_list(message_ids) do

@@ -17,6 +17,7 @@ defmodule Kanta.Backend.Adapter.CachedDB do
     SingularTranslation
   }
 
+  alias Kanta.Cache
   alias Kanta.Translations
 
   @doc """
@@ -32,9 +33,28 @@ defmodule Kanta.Backend.Adapter.CachedDB do
   ## Returns
     * `{:ok, translation}` - When translation is found
     * `{:error, :not_found}` - When translation is not found
+
+  The translated text, or its absence, is cached under one key per lookup, so a
+  repeated lookup costs a single cache read rather than one per finder. Every
+  write that can change a lookup's result drops the whole cache.
   """
   @impl true
   def lgettext(locale, domain, msgctxt, msgid, bindings) do
+    cache_key = {__MODULE__, :lgettext, locale, domain, msgctxt, msgid}
+
+    text =
+      case Cache.get!(cache_key) do
+        nil -> singular_text(locale, domain, msgctxt, msgid) |> tap(&Cache.put!(cache_key, &1))
+        cached -> cached
+      end
+
+    case text do
+      :not_found -> {:error, :not_found}
+      text -> apply_bindings(text, bindings)
+    end
+  end
+
+  defp singular_text(locale, domain, msgctxt, msgid) do
     with {:ok, %Locale{id: locale_id}} <-
            Translations.get_locale(filter: [iso639_code: locale]),
          {:ok, %Domain{id: domain_id}} <-
@@ -55,11 +75,10 @@ defmodule Kanta.Backend.Adapter.CachedDB do
                locale_id: locale_id,
                message_id: message_id
              ]
-           ),
-         {:ok, interpolated} <- apply_bindings(text, bindings) do
-      {:ok, interpolated}
+           ) do
+      text
     else
-      _ -> {:error, :not_found}
+      _ -> :not_found
     end
   end
 

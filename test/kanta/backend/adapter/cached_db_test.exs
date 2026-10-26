@@ -107,6 +107,85 @@ defmodule Kanta.Backend.Adapter.CachedDBTest do
       result = CachedDB.lgettext("fr", "test_domain", nil, "Hello %{name}", %{name: "Alice"})
       assert result == {:ok, "Bonjour Alice"}
     end
+
+    test "serves a repeated lookup from the cache until its translation is updated", %{
+      locale: locale,
+      domain: domain
+    } do
+      {:ok, message} =
+        Translations.create_message(%{
+          message_type: :singular,
+          msgid: "Good night",
+          context_id: nil,
+          domain_id: domain.id
+        })
+
+      {:ok, translation} =
+        Translations.create_singular_translation(%{
+          locale_id: locale.id,
+          message_id: message.id,
+          translated_text: "Bonne nuit"
+        })
+
+      assert CachedDB.lgettext("fr", "test_domain", nil, "Good night", %{}) == {:ok, "Bonne nuit"}
+
+      translation
+      |> Ecto.Changeset.change(translated_text: "Bonsoir")
+      |> Kanta.Test.Repo.update!()
+
+      assert CachedDB.lgettext("fr", "test_domain", nil, "Good night", %{}) == {:ok, "Bonne nuit"}
+
+      {:ok, _translation} =
+        Translations.update_singular_translation(translation, %{translated_text: "Douce nuit"})
+
+      assert CachedDB.lgettext("fr", "test_domain", nil, "Good night", %{}) == {:ok, "Douce nuit"}
+    end
+
+    test "finds a translation created after a lookup missed it", %{locale: locale, domain: domain} do
+      {:ok, message} =
+        Translations.create_message(%{
+          message_type: :singular,
+          msgid: "Good morning",
+          context_id: nil,
+          domain_id: domain.id
+        })
+
+      assert CachedDB.lgettext("fr", "test_domain", nil, "Good morning", %{}) ==
+               {:error, :not_found}
+
+      {:ok, _translation} =
+        Translations.create_singular_translation(%{
+          locale_id: locale.id,
+          message_id: message.id,
+          translated_text: "Bonjour"
+        })
+
+      assert CachedDB.lgettext("fr", "test_domain", nil, "Good morning", %{}) == {:ok, "Bonjour"}
+    end
+
+    test "misses a translation once its message is deleted", %{locale: locale, domain: domain} do
+      {:ok, message} =
+        Translations.create_message(%{
+          message_type: :singular,
+          msgid: "Good evening",
+          context_id: nil,
+          domain_id: domain.id
+        })
+
+      {:ok, _translation} =
+        Translations.create_singular_translation(%{
+          locale_id: locale.id,
+          message_id: message.id,
+          translated_text: "Bonsoir"
+        })
+
+      assert CachedDB.lgettext("fr", "test_domain", nil, "Good evening", %{}) == {:ok, "Bonsoir"}
+
+      {:ok, _stats} = Translations.delete_message(message.id)
+
+      assert CachedDB.lgettext("fr", "test_domain", nil, "Good evening", %{}) ==
+               {:error, :not_found}
+    end
   end
 
   describe "lngettext/7" do
