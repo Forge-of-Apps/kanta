@@ -26,15 +26,11 @@ defmodule Kanta.Translations.SingularTranslations do
     |> Repo.get_repo().insert(opts)
     |> case do
       {:ok, singular_translation} ->
-        cache_key =
-          Cache.generate_cache_key("singular_translation",
-            filter: [
-              locale_id: singular_translation.locale_id,
-              message_id: singular_translation.message_id
-            ]
-          )
-
-        Cache.put!(cache_key, singular_translation)
+        # CachedDB caches each lookup's translated text under a key of its own
+        # strings, which no single finder key here can reach, so drop the whole
+        # cache, as create_message does. Translations are written by the PO
+        # sync and dashboard actions only, never on the hot path.
+        Cache.delete_all!()
         {:ok, singular_translation}
 
       error ->
@@ -47,16 +43,7 @@ defmodule Kanta.Translations.SingularTranslations do
     |> Repo.get_repo().update(opts)
     |> case do
       {:ok, translation} ->
-        cache_key =
-          Cache.generate_cache_key("singular_translation",
-            filter: [
-              locale_id: translation.locale_id,
-              message_id: translation.message_id
-            ]
-          )
-
-        Cache.put!(cache_key, translation)
-
+        Cache.delete_all!()
         {:ok, translation}
 
       error ->

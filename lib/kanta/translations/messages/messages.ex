@@ -51,6 +51,14 @@ defmodule Kanta.Translations.Messages do
     message
     |> Message.changeset(attrs)
     |> Repo.get_repo().update()
+    |> case do
+      {:ok, message} ->
+        Kanta.Cache.delete_all!()
+        {:ok, message}
+
+      error ->
+        error
+    end
   end
 
   @doc """
@@ -105,6 +113,14 @@ defmodule Kanta.Translations.Messages do
         message_deleted: message_count == 1
       }
     end)
+    |> case do
+      {:ok, stats} ->
+        Kanta.Cache.delete_all!()
+        {:ok, stats}
+
+      error ->
+        error
+    end
   end
 
   def delete_messages(message_ids) when is_list(message_ids) do
@@ -186,12 +202,19 @@ defmodule Kanta.Translations.Messages do
         # Delete the source message
         Repo.get_repo().delete(from_message)
 
-        # Invalidate cache
-        Kanta.Cache.delete_all!()
-
         # Return the target message
         to_message
       end)
+      |> case do
+        # Invalidate the cache once the merge has committed, so no lookup in
+        # between caches the translations as they were before it
+        {:ok, to_message} ->
+          Kanta.Cache.delete_all!()
+          {:ok, to_message}
+
+        error ->
+          error
+      end
     end
   end
 end
