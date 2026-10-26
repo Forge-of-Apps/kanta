@@ -35,12 +35,14 @@ defmodule Kanta.Backend.Adapter.CachedDB do
     * `{:error, :not_found}` - When translation is not found
 
   The translated text, or its absence, is cached under one key per lookup, so a
-  repeated lookup costs a single cache read rather than one per finder. Every
-  write that can change a lookup's result drops the whole cache.
+  repeated lookup costs two cache reads rather than one per finder. Every write
+  that can change a lookup's result drops the whole cache, including the token of
+  its generation that every key carries: a lookup that read the database before
+  the drop stores its text under the old token, where no later lookup looks.
   """
   @impl true
   def lgettext(locale, domain, msgctxt, msgid, bindings) do
-    cache_key = {__MODULE__, :lgettext, locale, domain, msgctxt, msgid}
+    cache_key = {__MODULE__, :lgettext, generation(), locale, domain, msgctxt, msgid}
 
     text =
       case Cache.get!(cache_key) do
@@ -51,6 +53,13 @@ defmodule Kanta.Backend.Adapter.CachedDB do
     case text do
       :not_found -> {:error, :not_found}
       text -> apply_bindings(text, bindings)
+    end
+  end
+
+  defp generation do
+    with nil <- Cache.get!({__MODULE__, :generation}) do
+      Cache.put_new!({__MODULE__, :generation}, make_ref())
+      Cache.get!({__MODULE__, :generation})
     end
   end
 

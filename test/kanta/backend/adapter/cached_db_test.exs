@@ -141,6 +141,44 @@ defmodule Kanta.Backend.Adapter.CachedDBTest do
       assert CachedDB.lgettext("fr", "test_domain", nil, "Good night", %{}) == {:ok, "Douce nuit"}
     end
 
+    test "serves no text a lookup stored under the generation before a drop", %{
+      locale: locale,
+      domain: domain
+    } do
+      {:ok, message} =
+        Translations.create_message(%{
+          message_type: :singular,
+          msgid: "Sweet dreams",
+          context_id: nil,
+          domain_id: domain.id
+        })
+
+      {:ok, translation} =
+        Translations.create_singular_translation(%{
+          locale_id: locale.id,
+          message_id: message.id,
+          translated_text: "Beaux rêves"
+        })
+
+      assert CachedDB.lgettext("fr", "test_domain", nil, "Sweet dreams", %{}) ==
+               {:ok, "Beaux rêves"}
+
+      generation = Kanta.Cache.get!({CachedDB, :generation})
+
+      {:ok, _translation} =
+        Translations.update_singular_translation(translation, %{
+          translated_text: "Fais de beaux rêves"
+        })
+
+      Kanta.Cache.put!(
+        {CachedDB, :lgettext, generation, "fr", "test_domain", nil, "Sweet dreams"},
+        "Beaux rêves"
+      )
+
+      assert CachedDB.lgettext("fr", "test_domain", nil, "Sweet dreams", %{}) ==
+               {:ok, "Fais de beaux rêves"}
+    end
+
     test "finds a translation created after a lookup missed it", %{locale: locale, domain: domain} do
       {:ok, message} =
         Translations.create_message(%{
