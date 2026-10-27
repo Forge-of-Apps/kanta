@@ -1,12 +1,28 @@
 defmodule Kanta.Cache do
   @moduledoc """
-  Kanta Cache for minimalizing calls to DB
+  Kanta Cache for minimalizing calls to DB.
+
+  A Nebulex cache partitioned across the nodes of a cluster. An application that
+  serves translations from a single node can make it a local cache at compile time,
+  which answers a read without routing its key through the cluster's hash ring,
+  about a third of the cost of each of the reads behind every gettext call:
+
+      config :kanta, :cache_adapter, Nebulex.Adapters.Local
+
+  A local cache drops entries on its own node only, so keep the partitioned
+  default wherever several nodes serve translations.
   """
+
+  @cache_adapter Application.compile_env(:kanta, :cache_adapter, Nebulex.Adapters.Partitioned)
 
   use Nebulex.Cache,
     otp_app: :kanta,
-    adapter: Nebulex.Adapters.Partitioned,
-    adapter_opts: [primary_storage_adapter: Nebulex.Adapters.Local]
+    adapter: @cache_adapter,
+    adapter_opts:
+      if(@cache_adapter == Nebulex.Adapters.Partitioned,
+        do: [primary_storage_adapter: Nebulex.Adapters.Local],
+        else: []
+      )
 
   def generate_cache_key(prefix, params) do
     Enum.reduce(params, prefix, fn {key, value}, acc ->

@@ -314,6 +314,8 @@ Messages and translations from .po files are stored in tables created by the Kan
 
 With Gettext version >= `0.26`, Kanta uses a custom backend adapter system (`Kanta.Backend.Adapter.CachedDB`) that fetches translations from the database/cache at runtime instead of compiled PO files. The caching mechanism prevents constant requests to the database when downloading translations, so you don't have to worry about a delay in application performance.
 
+The cache is partitioned across the nodes of a cluster. An application serving translations from a single node can make it local with `config :kanta, :cache_adapter, Nebulex.Adapters.Local`, which makes each cached lookup cheaper; see `Kanta.Cache`.
+
 ### Detection of stale messages
 
 ![Stale Dashboard Tiles](assets/images/readme/stale-dashboard.png)
