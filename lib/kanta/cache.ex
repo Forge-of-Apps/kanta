@@ -2,27 +2,42 @@ defmodule Kanta.Cache do
   @moduledoc """
   Kanta Cache for minimalizing calls to DB.
 
-  A Nebulex cache partitioned across the nodes of a cluster. An application that
-  serves translations from a single node can make it a local cache at compile time,
-  which answers a read without routing its key through the cluster's hash ring,
-  about a third of the cost of each of the reads behind every gettext call:
-
-      config :kanta, :cache_adapter, Nebulex.Adapters.Local
-
-  A local cache drops entries on its own node only, so keep the partitioned
-  default wherever several nodes serve translations.
+  Every node keeps its own copy, filled from the database as it reads, and a
+  deletion on any node drops the deleted entries on the others too: Nebulex's
+  coherent topology, with only deletions sent across the cluster
+  (`broadcast_partition/1`). A node filling its copy changes nothing the others
+  hold, so a write that changes a translation deletes what it changes rather
+  than overwriting it, or drops everything with `flush!/0`.
   """
-
-  @cache_adapter Application.compile_env(:kanta, :cache_adapter, Nebulex.Adapters.Partitioned)
 
   use Nebulex.Cache,
     otp_app: :kanta,
-    adapter: @cache_adapter,
-    adapter_opts:
-      if(@cache_adapter == Nebulex.Adapters.Partitioned,
-        do: [primary_storage_adapter: Nebulex.Adapters.Local],
-        else: []
-      )
+    adapter: Nebulex.Adapters.Coherent
+
+  alias Nebulex.Event.CacheEntryEvent
+
+  @impl true
+  def init(config) do
+    stream_opts = [partitions: 1, hash: &__MODULE__.broadcast_partition/1]
+    {:ok, Keyword.update(config, :stream_opts, stream_opts, &Keyword.merge(&1, stream_opts))}
+  end
+
+  @doc """
+  The partition of the cluster's event stream a cache event goes out on:
+  deletions on the only one, every other event on none, so it stays on its node.
+  """
+  def broadcast_partition(%CacheEntryEvent{type: :deleted}), do: 0
+  def broadcast_partition(%CacheEntryEvent{}), do: :none
+
+  @doc """
+  Drops every entry on every node. A deletion goes out to the other nodes only
+  when it deletes something here, so the flush first keeps an entry to delete,
+  whatever this node holds.
+  """
+  def flush! do
+    put!({__MODULE__, :flush}, true)
+    delete_all!()
+  end
 
   def generate_cache_key(prefix, params) do
     Enum.reduce(params, prefix, fn {key, value}, acc ->

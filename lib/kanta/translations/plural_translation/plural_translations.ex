@@ -35,7 +35,7 @@ defmodule Kanta.Translations.PluralTranslations do
             ]
           )
 
-        Cache.put!(cache_key, plural_translation)
+        Cache.delete!(cache_key)
         {:ok, plural_translation}
 
       error ->
@@ -57,7 +57,7 @@ defmodule Kanta.Translations.PluralTranslations do
             ]
           )
 
-        Cache.put!(cache_key, translation)
+        Cache.delete!(cache_key)
 
         {:ok, translation}
 
