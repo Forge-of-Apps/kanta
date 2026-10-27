@@ -16,6 +16,9 @@ defmodule Kanta.PoFiles.Services.ExtractPluralTranslation do
         create_or_update_plural_translations(attrs, message, locale)
       end
     end)
+    # The writes above drop the cache before this transaction commits, so a
+    # lookup in between may cache what it read before them: drop it once more.
+    |> tap(fn _result -> Kanta.Cache.flush!() end)
   end
 
   defp get_or_create_locale(iso639_code, plurals_header) do

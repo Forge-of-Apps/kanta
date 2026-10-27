@@ -3,6 +3,7 @@ defmodule Kanta.Translations.Locales do
   Locales Kanta subcontext
   """
 
+  alias Kanta.Cache
   alias Kanta.Repo
 
   alias Kanta.Translations.Locale
@@ -23,5 +24,13 @@ defmodule Kanta.Translations.Locales do
   def update_locale(locale, attrs \\ %{}, opts \\ []) do
     Locale.changeset(locale, attrs)
     |> Repo.get_repo().update(opts)
+    |> case do
+      {:ok, locale} ->
+        Cache.flush!()
+        {:ok, locale}
+
+      error ->
+        error
+    end
   end
 end

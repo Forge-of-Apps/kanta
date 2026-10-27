@@ -3,6 +3,7 @@ defmodule Kanta.Translations.ApplicationSources do
   ApplicationSources Kanta subcontext
   """
 
+  alias Kanta.Cache
   alias Kanta.Translations.ApplicationSource
 
   alias Kanta.Translations.ApplicationSources.Finders.{
@@ -28,6 +29,14 @@ defmodule Kanta.Translations.ApplicationSources do
     application_source
     |> ApplicationSource.changeset(attrs)
     |> Kanta.Repo.get_repo().update(opts)
+    |> case do
+      {:ok, application_source} ->
+        Cache.flush!()
+        {:ok, application_source}
+
+      error ->
+        error
+    end
   end
 
   def change_application_source(%ApplicationSource{} = application_source, params \\ %{}) do

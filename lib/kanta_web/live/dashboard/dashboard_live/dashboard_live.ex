@@ -29,7 +29,7 @@ defmodule KantaWeb.Dashboard.DashboardLive do
   end
 
   def handle_event("clear-cache", _, socket) do
-    Cache.delete_all!()
+    Cache.flush!()
 
     {:noreply, assign(socket, :cache_count, Cache.count_all!())}
   end

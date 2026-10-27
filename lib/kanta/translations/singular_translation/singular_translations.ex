@@ -30,7 +30,7 @@ defmodule Kanta.Translations.SingularTranslations do
         # strings, which no single finder key here can reach, so drop the whole
         # cache, as create_message does. Translations are written by the PO
         # sync and dashboard actions only, never on the hot path.
-        Cache.delete_all!()
+        Cache.flush!()
         {:ok, singular_translation}
 
       error ->
@@ -43,7 +43,7 @@ defmodule Kanta.Translations.SingularTranslations do
     |> Repo.get_repo().update(opts)
     |> case do
       {:ok, translation} ->
-        Cache.delete_all!()
+        Cache.flush!()
         {:ok, translation}
 
       error ->
